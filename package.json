@@ -1,0 +1,23 @@
+{
+  "name": "@untangler/arc-toolbox",
+  "homepage": "https://untangler.com",
+  "description": "Several plugins to extend @untangler/architect.",
+  "main": "src/index.mjs",
+  "dependencies": {
+    "@untangler/architect": "^1.0.4"
+  },
+  "version": "1.0.0",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/redsky-analytics/arc-toolbox.git"
+  },
+  "author": "Gregory Mulla",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/redsky-analytics/arc-toolbox/issues"
+  }
+}
