@@ -4,7 +4,7 @@
   "description": "Several plugins to extend @untangler/architect.",
   "main": "src/index.mjs",
   "dependencies": {
-    "@untangler/architect": "^1.0.4"
+    "@untangler/architect": "^1.0.8"
   },
   "version": "1.0.0",
   "devDependencies": {},

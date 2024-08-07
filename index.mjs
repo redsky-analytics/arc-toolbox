@@ -157,7 +157,7 @@ export const deploy = {
   start: async ({ arc, cloudformation, dryRun, inventory, stage }) => {
     // Run operations prior to deployment
     // Optionally return mutated `cloudformation`
-    console.log("START >>>>>>>>>>>>>>>>>", cloudformation);
+
     const apiName = getApiName(cloudformation);
     const config = getConfig(arc);
     const httpApi = cloudformation.Resources[apiName];
@@ -193,12 +193,10 @@ export const deploy = {
       cfn.Resources[apiName].Properties.CorsConfiguration.AllowCredentials = corsConfig.allowCredentials;
     }
 
-    console.log('START ROUTES --------------');
 
     for (const resource of findRoutes(cloudformation)) {
       const shortName = resource.substring(0, resource.length - "Lambda".length);
       const pathToCode = cloudformation.Resources[resource].Properties.CodeUri;
-      console.log('P2C>>>>>>>>', pathToCode);
 
       const config = true;
       if (config !== false) {
@@ -206,11 +204,9 @@ export const deploy = {
         // cloudformation.Resources[resource].Properties.Events[`${shortName}Event`].Properties['Authorizer'] = 'OAuth2Authorizer';
         cloudformation.Resources[resource].Properties.Events[`${shortName}Event`].Properties['AuthorizationType'] = 'NONE';
 
-        console.log('<<<', cloudformation.Resources[resource].Properties.Events[`${shortName}Event`]);
       }
     }
 
-    console.log('END ROUTES --------------');
 
   },
 
