@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "arc-toolbox"
+version = "0.1.0"
+description = ""
+authors = ["Gregory Mulla <gregory.cr.mulla@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+awscli = "^1.33.40"
+boto3 = "^1.34.158"
+architect-functions = "^1.0.0"
+
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.5"
+pipdeptree = "^2.23.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

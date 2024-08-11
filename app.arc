@@ -10,22 +10,34 @@ abc2
 
 @http
 get /p1
+get /openapi-specs
+get /auth-config
 
 
-@table
+@tables
+
 collections
-  cid
+  cid *String
 
 items
-  cid  
-  iid
+  cid *String
+  iid **String
 
 @table-index
 collections
-    name
+  name
 
 items
-    name
+  name
 
 @aws
 runtime python3.12
+region us-east-1
+
+@auth
+
+@noauth
+get /_static/proxy+
+get /proxy+
+get /auth-config
+get /openapi-specs

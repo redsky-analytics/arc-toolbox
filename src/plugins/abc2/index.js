@@ -1,7 +1,12 @@
 const fs = require('fs')
+let { spawnSync } = require('child_process')
+
 
 const JSONToFile = (obj, filename) =>
   fs.writeFileSync(`${filename}.json`, JSON.stringify(obj, null, 2));
+
+const ConfigFromJSON = (filename) =>
+  JSON.parse(fs.readFileSync(`${filename}.json`))
 
 
 function splitStrings([key, value]) {
@@ -18,28 +23,24 @@ function getApiName(cfn) {
   );
 }
 
-function getConfig(arc) {
-  const defaultConfig = {
-    issuer: "",
-    audience: [],
-    scopes: [],
-    identitySource: "$request.header.Authorization",
-    default: false,
-  };
+function getAuthConfig(arc) {
 
-  if (arc.jwt) {
+  if (arc.auth) {
+    
+    const authSettings = ConfigFromJSON('firebase-auth')
+    const firebaseProjectName = authSettings['projectId']
+
     return {
-      ...defaultConfig,
-      ...Object.fromEntries(arc.jwt.map((setting) => splitStrings(setting))),
+      issuer: `https://securetoken.google.com/${firebaseProjectName}`,
+      audience: firebaseProjectName,
+      scopes: [],
+      identitySource: "$request.header.Authorization"
     };
   }
 
-  return {
-    ...defaultConfig
-  };
-
-  
+  return null
 }
+
 
 function getCorsConfig(arc) {
   const defaultConfig = {
@@ -71,27 +72,6 @@ function getCorsConfig(arc) {
 }
 
 
-function findRoutes(cfn) {
-  function isApi(resource) {
-    return resource.Type === 'AWS::Serverless::Function';
-  }
-
-  function hasHttpEvent(resource, lambdaName) {
-    const name = lambdaName.substring(0, lambdaName.length - "Lambda".length);
-    return (
-      resource.Properties &&
-      resource.Properties.Events &&
-      Object.keys(resource.Properties.Events).length > 0 &&
-      Object.keys(resource.Properties.Events).includes(`${name}Event`) &&
-      resource.Properties.Events[`${name}Event`].Type === 'HttpApi'
-    );
-  }
-
-  return Object.keys(cfn.Resources)
-    .filter((resource) => isApi(cfn.Resources[resource]))
-    .filter((resource) => hasHttpEvent(cfn.Resources[resource], resource));
-}
-
 module.exports = {
   // Setters
   set: {
@@ -114,14 +94,32 @@ module.exports = {
     //   }
     // },
 
+    static: ({ arc, inventory }) => {
+      return {
+        fingerprint: true,
+        spa: true,
+        folder: 'src/backend/dist'
+      }
+    },
+
+    tables: ({ arc, inventory }) => {
+      return {
+        name: 'system',
+        partitionKey: 'sid',
+        partitionKeyType: 'string',
+      }
+    },
+
+
+
     // @http
-    // http: ({ arc, inventory }) => {
-    //   return {
-    //     method: 'get',
-    //     path: '/*'
-    //     src: join('path', 'to', 'code'),
-    //   }
-    // },
+    http: ({ arc, inventory }) => {
+      return {
+        method: 'get',
+        path: '/auth-config',
+        src: 'src/http/get-auth_config',
+      }
+    },
 
     // @scheduled
     // scheduled: ({ arc, inventory }) => {
@@ -155,11 +153,20 @@ module.exports = {
      */
     // Environment variables
     env: ({ arc, inventory }) => {
-      console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Setting Env');
-      return {
+
+      const envs = {
         MY_ENV_VAR: 'ok',
         ANOTHER_VAR: { objects_and_arrays_are_automatically_json_encoded: 'neat!' }
       };
+
+      const authConfig = getAuthConfig(arc)
+
+      if (authConfig) {
+        const firebaseConfig = ConfigFromJSON('firebase-auth');
+        envs['auth_config'] = firebaseConfig
+      }
+
+      return envs
       
     },
 
@@ -180,29 +187,30 @@ module.exports = {
     start: async ({ arc, cloudformation, dryRun, inventory, stage }) => {
       // Run operations prior to deployment
       // Optionally return mutated `cloudformation`
-      console.log("START >>>>>>>>>>>>>>>>>", cloudformation);
+      
       const apiName = getApiName(cloudformation);
-      const config = getConfig(arc);
+      const authConfig = getAuthConfig(arc);
       const httpApi = cloudformation.Resources[apiName];
-  
-      // https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-controlling-access-to-apis-oauth2-authorizer.html
-      httpApi.Properties.Auth = {
-        Authorizers: {
-          OAuth2Authorizer: {
-            AuthorizationScopes: config.scopes,
-            JwtConfiguration: {
-              issuer: config.issuer,
-              audience: config.audience,
+
+      // authorization
+      if (authConfig) {
+        // https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-controlling-access-to-apis-oauth2-authorizer.html
+        httpApi.Properties.Auth = {
+          Authorizers: {
+            OAuth2Authorizer: {
+              AuthorizationScopes: authConfig.scopes,
+              JwtConfiguration: {
+                issuer: authConfig.issuer,
+                audience: [authConfig.audience],
+              },
+              IdentitySource: authConfig.identitySource,
             },
-            IdentitySource: config.identitySource,
           },
-        },
-      };
-  
-  
-      httpApi.Properties.Auth.DefaultAuthorizer = 'OAuth2Authorizer';
-  
-  
+        };
+        httpApi.Properties.Auth.DefaultAuthorizer = 'OAuth2Authorizer';
+      }
+      
+      // CORS
       const corsConfig = getCorsConfig(arc);
       cloudformation.Resources[apiName].Properties.CorsConfiguration = {
         AllowOrigins: corsConfig.allowOrigins,
@@ -215,24 +223,15 @@ module.exports = {
       if (corsConfig.allowOrigins[0] !== '*') {
         cfn.Resources[apiName].Properties.CorsConfiguration.AllowCredentials = corsConfig.allowCredentials;
       }
-  
-      console.log('START ROUTES --------------');
-  
-      for (const resource of findRoutes(cloudformation)) {
-        const shortName = resource.substring(0, resource.length - "Lambda".length);
-        const pathToCode = cloudformation.Resources[resource].Properties.CodeUri;
-        console.log('P2C>>>>>>>>', pathToCode);
-  
-        const config = true;
-        if (config !== false) {
-          // cloudformation.Resources[resource].Properties.Events[`${shortName}Event`].Properties['Auth'] = {Authorizer: 'OAuth2Authorizer', AuthorizationType: 'JWT'};
-          // cloudformation.Resources[resource].Properties.Events[`${shortName}Event`].Properties['Authorizer'] = 'OAuth2Authorizer';
-          // cloudformation.Resources[resource].Properties.Events[`${shortName}Event`].Properties['AuthorizationType'] = 'NONE';
-  
-        }
-      }
-  
 
+
+      //Deploy backend
+      const { status, stdout, output } = spawnSync('yarn', ['build'], { shell: true, cwd: 'src/backend' })
+      
+      if (status) {
+        console.error(output.toString())
+        throw Error('Error deploying backend')
+      }
   
     },
 
@@ -250,16 +249,14 @@ module.exports = {
     // },
 
     // Post-deploy operations
-    end: async (params) => {
+    end: async ({ arc, cloudformation, dryRun, inventory, stage, aws, stackname }) => {
+      console.log('stackname', stackname)
       // Run operations after to deployment
-      console.log(Object.keys(params));
-      console.log('XXXXXXXX', params['aws'])
+      // console.log(Object.keys(params));
+      // console.log('XXXXXXXX', params['aws'])
       // const { arc, cloudformation, dryRun, inventory, stage, aws, stackname } = params;
   
-  
-      // JSONToFile(cloudformation, 'cloudformation');
-      // JSONToFile(arc, 'arc');
-      // JSONToFile(inventory, 'inventory');
+      JSONToFile({ arc, cloudformation, dryRun, inventory, stage, stackname }, 'deployment');
   
       //     aws apigatewayv2 update-route \
       //  --api-id api-id  \
@@ -267,7 +264,7 @@ module.exports = {
       //  --authorization-type JWT \
       //  --authorizer-id authorizer-id \
       //  --authorization-scopes user.email 
-      console.log(">>>>>>>>>>>>>>>>>", params.aws);
+      // console.log(">>>>>>>>>>>>>>>>>", params.aws);
     },
   },
 

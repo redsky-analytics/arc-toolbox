@@ -30,3 +30,5 @@ metrics
 
 @userpilot
 
+https://console.firebase.google.com/project/<project_id>/settings/serviceaccounts/adminsdk
+

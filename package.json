@@ -4,10 +4,10 @@
   "description": "Several plugins to extend @untangler/architect.",
   "main": "src/index.mjs",
   "dependencies": {
-    "@untangler/architect": "^1.0.8"
+    "@untangler/architect": "^1.0.8",
+    "firebase-tools": "^13.15.1"
   },
   "version": "1.0.0",
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
