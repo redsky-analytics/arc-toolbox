@@ -4,8 +4,7 @@
   "description": "Several plugins to extend @untangler/architect.",
   "main": "src/index.mjs",
   "dependencies": {
-    "@untangler/architect": "^1.0.8",
-    "firebase-tools": "^13.15.1"
+    "@untangler/architect": "^1.0.8"
   },
   "version": "1.0.0",
   "scripts": {

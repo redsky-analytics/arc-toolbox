@@ -32,3 +32,5 @@ metrics
 
 https://console.firebase.google.com/project/<project_id>/settings/serviceaccounts/adminsdk
 
+"firebase-tools": "^13.15.1",
+
