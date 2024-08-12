@@ -19,7 +19,7 @@ def get_api_id_for_stack(stackName):
   return api_id
 
 
-def get_api_id():
+def get_api_id_from_deployment_file():
     deployment = json.loads(Path('deployment.json').read_text())
     apic = boto3.client('apigatewayv2')
     apis = apic.get_apis().get('Items')
@@ -29,8 +29,8 @@ def get_api_id():
 
 
 def update_api_gateway_athorizer():
-    deployment = json.loads(Path('deployment.json').read_text())
-    api_id = get_api_id()
+    
+    api_id = get_api_id_from_deployment_file()
     apic = boto3.client('apigatewayv2')
     authorizers = apic.get_authorizers(ApiId=api_id)
     authorizer, = authorizers['Items']
@@ -40,6 +40,7 @@ def update_api_gateway_athorizer():
     noAuthPaths = []
     authPaths = []
 
+    deployment = json.loads(Path('deployment.json').read_text())
     deployedAuthorization = {}
     for noAuthEntry in deployment['arc'].get('noauth'):
         routePath = ' '.join(noAuthEntry).lower()
@@ -84,9 +85,9 @@ def update_api_gateway_athorizer():
             apic.update_route(ApiId=api_id, RouteId=route_id, AuthorizationType=routeDeployment['expectedAuthorizer'], AuthorizerId=authorizer_id)
 
 
-    
+
 def get_openapi_specs():
-    api_id = get_api_id()
+    api_id = get_api_id_from_deployment_file()
     apic = boto3.client('apigatewayv2')
     response = apic.export_api(
       ApiId=api_id, 
@@ -101,6 +102,7 @@ def get_openapi_specs():
     except:
         pass
 
-
-update_api_gateway_athorizer()
-get_openapi_specs()
+if __name__ == '__main__':
+    print('Performing post deploy step.')
+    update_api_gateway_athorizer()
+    get_openapi_specs()

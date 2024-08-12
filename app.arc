@@ -10,8 +10,6 @@ abc2
 
 @http
 get /p1
-get /openapi-specs
-get /auth-config
 
 
 @tables

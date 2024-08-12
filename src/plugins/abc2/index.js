@@ -114,11 +114,19 @@ module.exports = {
 
     // @http
     http: ({ arc, inventory }) => {
-      return {
-        method: 'get',
-        path: '/auth-config',
-        src: 'src/http/get-auth_config',
-      }
+      return [
+        {
+          method: 'get',
+          path: '/auth-config',
+          src: 'src/http/get-auth_config',
+        },
+        {
+          method: 'get',
+          path: '/openapi-specs',
+          src: 'src/http/get-openapi_specs',
+        },
+      
+      ]
     },
 
     // @scheduled
@@ -250,7 +258,7 @@ module.exports = {
 
     // Post-deploy operations
     end: async ({ arc, cloudformation, dryRun, inventory, stage, aws, stackname }) => {
-      console.log('stackname', stackname)
+
       // Run operations after to deployment
       // console.log(Object.keys(params));
       // console.log('XXXXXXXX', params['aws'])
@@ -258,6 +266,15 @@ module.exports = {
   
       JSONToFile({ arc, cloudformation, dryRun, inventory, stage, stackname }, 'deployment');
   
+      console.log('Spawning post deploy ...')
+      const { status, stdout, output } = spawnSync('python', ['postdeploy.py'], { shell: true })
+      
+      if (status) {
+        console.error(output.toString())
+        throw Error('Error performing post deploy')
+      } else {
+        console.log('Completed successfully.')
+      }
       //     aws apigatewayv2 update-route \
       //  --api-id api-id  \
       //  --route-id route-id  \
