@@ -4,3 +4,5 @@ __pycache__/
 vendor/
 .env*
 deployment.json
+fb-refresh-token.json
+fb-sa.json
